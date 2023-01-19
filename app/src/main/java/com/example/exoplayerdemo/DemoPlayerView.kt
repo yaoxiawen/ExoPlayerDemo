@@ -26,6 +26,7 @@ class DemoPlayerView @JvmOverloads constructor(
     private var player: Player? = null
     private var playState = false
     private val progressChangeList: MutableList<ProgressStateChangeListener> = mutableListOf()
+    private var playbackStateChanged: ((@Player.State Int) -> Unit)? = null
     private var errorCallback: ((PlaybackException?) -> Unit)? = null
     private var refreshClickListener: (() -> Unit)? = null
 
@@ -39,6 +40,10 @@ class DemoPlayerView @JvmOverloads constructor(
                 val duration = currentPlayer.duration.toInt()
                 progressChangeList.forEach {
                     it.onProgressChanged(currentPosition, bufferedPosition, duration)
+                }
+                //根据Player.STATE_ENDED回调判断不靠谱，额外增加采用进度判断结束状态
+                if (currentPosition >= duration) {
+                    playbackStateChanged?.invoke(Player.STATE_ENDED)
                 }
                 //0.5秒后自动获取进度
                 sendEmptyMessageDelayed(1, 500)
@@ -163,6 +168,7 @@ class DemoPlayerView @JvmOverloads constructor(
                 visibility = View.VISIBLE
             }
             updateProgressState()
+            playbackStateChanged?.invoke(playbackState)
         }
 
         override fun onPlayWhenReadyChanged(
@@ -177,6 +183,10 @@ class DemoPlayerView @JvmOverloads constructor(
         if (!progressChangeList.contains(listener)) {
             progressChangeList.add(listener)
         }
+    }
+
+    fun addPlaybackStateChanged(playbackStateChanged: (@Player.State Int) -> Unit) {
+        this.playbackStateChanged = playbackStateChanged
     }
 
     fun setOnErrorCallback(errorCallback: (playerError: PlaybackException?) -> Unit) {
